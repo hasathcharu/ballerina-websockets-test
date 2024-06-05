@@ -36,9 +36,8 @@ service class WsService {
 service class WsServiceUser {
     *websocket:Service;
     
-    remote function onSubscribe(websocket:Caller caller, types:User user) returns string? {
-        user.caller = caller;
-        user.id = caller.getConnectionId();
+    remote function onSubscribe(websocket:Caller caller, types:Subscribe sub) returns string? {
+        types:User user = {caller: caller, gender: sub.gender, name: sub.name, id: caller.getConnectionId()};
         users[caller.getConnectionId()] = user;
         broadcast("User " + user.name + " (" + caller.getConnectionId() + ")" + " has joined the chat");
         return users.toArray().toBalString();

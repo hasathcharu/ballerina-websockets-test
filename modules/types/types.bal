@@ -29,6 +29,19 @@ public type Info record {|
     string event;
 |};
 
+# Representation of a subscription.
+#
+# + event - type of event
+# + name - name of the user
+# + gender - gender of the user
+# + id - id of the user (connection id)
+# + caller - websocket caller object
+public type Subscribe record {|
+    string event;
+    string name;
+    string gender;
+|};
+
 # Representation of a user.
 #
 # + event - type of event
@@ -37,11 +50,10 @@ public type Info record {|
 # + id - id of the user (connection id)
 # + caller - websocket caller object
 public type User record {|
-    string event;
     string name;
     string gender;
-    string id?;
-    websocket:Caller caller?;
+    string id;
+    websocket:Caller caller;
 |};
 
 # Repersentation of a message.
