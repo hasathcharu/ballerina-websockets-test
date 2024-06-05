@@ -49,7 +49,7 @@ public type User record {|
 # + message - message to be sent  
 # + event - dispatcher key
 # + toUserId - user id to send the message
-public type Message record {|
+public type Chat record {|
     string message;
     string event;
     string toUserId;

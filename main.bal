@@ -54,7 +54,7 @@ service class WsServiceUser {
     //     _ = users.remove(caller.getConnectionId());
     // }
 
-    remote function onMessage(websocket:Caller caller, types:Message message) returns string|error {
+    remote function onChat(websocket:Caller caller, types:Chat message) returns string|error {
         if (!users.hasKey(caller.getConnectionId())) {
             return "Please subscribe first to send messages";
         }
