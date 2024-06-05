@@ -1,7 +1,7 @@
 import ballerina/websocket;
 import websocket_test.types;
 
-listener websocket:Listener websocketListener = check new(9091);
+listener websocket:Listener websocketListener = check new(9092);
 map<types:User> users = {};
 
 @websocket:ServiceConfig{dispatcherKey: "event"}
@@ -27,7 +27,7 @@ service /user on websocketListener {
 service class WsService {
     *websocket:Service;
 
-    remote function onHi(types:Hello clientData) returns string? {
+    remote function onHello(types:Hello clientData) returns string? {
         return "You sent: " + clientData.message;
     }
 
@@ -36,12 +36,12 @@ service class WsService {
 service class WsServiceUser {
     *websocket:Service;
     
-    remote function onSubscribe(websocket:Caller caller, types:User user) returns types:User[]|error? {
+    remote function onSubscribe(websocket:Caller caller, types:User user) returns string? {
         user.caller = caller;
         user.id = caller.getConnectionId();
         users[caller.getConnectionId()] = user;
         broadcast("User " + user.name + " (" + caller.getConnectionId() + ")" + " has joined the chat");
-        return users.toArray();
+        return users.toArray().toBalString();
     } 
 
     remote function onUnsubscribe(websocket:Caller caller, types:Unsubscribe unsubscribe) returns error? {
@@ -49,22 +49,25 @@ service class WsServiceUser {
         _ = users.remove(caller.getConnectionId());
     }
 
-    remote function onClose(websocket:Caller caller) returns error? {
-        broadcast("User " + users.get(caller.getConnectionId()).name + " has left the chat");
-        _ = users.remove(caller.getConnectionId());
-    }
+    // remote function onClose(websocket:Caller caller) returns websocket:Error? {
+    //     broadcast("User " + users.get(caller.getConnectionId()).name + " has left the chat");
+    //     _ = users.remove(caller.getConnectionId());
+    // }
 
     remote function onMessage(websocket:Caller caller, types:Message message) returns string|error {
-        types:User? sender = users.get(caller.getConnectionId());
-        if (sender is ()) {
+        if (!users.hasKey(caller.getConnectionId())) {
             return "Please subscribe first to send messages";
+        }
+        types:User sender = users.get(caller.getConnectionId());
+        if (!users.hasKey(message.toUserId)) {
+            return "User not found";
         }
         websocket:Caller? receiver = users.get(message.toUserId).caller;
         if (receiver is ()) {
             return "User not found";
         }
-        _ = check caller->writeTextMessage("Message from " + sender.name + ": " + message.message);
-        return "Message sent";
+        _ = check receiver->writeTextMessage(sender.name + ": " + message.message);
+        return "You: " + message.message;
     }
   
 }

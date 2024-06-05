@@ -1,7 +1,7 @@
 ## Subscribe Message Example
 
 ```json
-{"event":"subscribe","name":"Tester","gender":"Male"}
+{"event":"subscribe","name":"Gopi","gender":"Male"}
 ```
 
 ## Unsubscribe Message Example
@@ -19,5 +19,5 @@
 ## Chat Message Example
 
 ```json
-{"event":"chat","message":"Hello, how are you?"}
+{"event":"message","message":"Bye", "toUserId": "cc6b1efffe42ea75-0001ecb8-00000001-9b99ee9002ac1744-2eef4684"}
 ```
