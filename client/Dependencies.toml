@@ -94,6 +94,9 @@ dependencies = [
 	{org = "ballerina", name = "jballerina.java"},
 	{org = "ballerina", name = "lang.value"}
 ]
+modules = [
+	{org = "ballerina", packageName = "io", moduleName = "io"}
+]
 
 [[package]]
 org = "ballerina"
@@ -170,6 +173,9 @@ name = "lang.runtime"
 version = "0.0.0"
 dependencies = [
 	{org = "ballerina", name = "jballerina.java"}
+]
+modules = [
+	{org = "ballerina", packageName = "lang.runtime", moduleName = "lang.runtime"}
 ]
 
 [[package]]
@@ -302,14 +308,27 @@ modules = [
 
 [[package]]
 org = "haritha"
-name = "websocket_test"
+name = "test_websocket"
 version = "0.1.0"
 dependencies = [
+	{org = "ballerina", name = "io"},
+	{org = "ballerina", name = "lang.runtime"},
 	{org = "ballerina", name = "websocket"},
-	{org = "ballerinai", name = "observe"}
+	{org = "ballerinai", name = "observe"},
+	{org = "xlibb", name = "pipe"}
 ]
 modules = [
-	{org = "haritha", packageName = "websocket_test", moduleName = "websocket_test"},
-	{org = "haritha", packageName = "websocket_test", moduleName = "websocket_test.types"}
+	{org = "haritha", packageName = "test_websocket", moduleName = "test_websocket"}
+]
+
+[[package]]
+org = "xlibb"
+name = "pipe"
+version = "1.4.1"
+dependencies = [
+	{org = "ballerina", name = "jballerina.java"}
+]
+modules = [
+	{org = "xlibb", packageName = "pipe", moduleName = "pipe"}
 ]
 

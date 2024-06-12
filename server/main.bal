@@ -27,8 +27,8 @@ service /user on websocketListener {
 service class WsService {
     *websocket:Service;
 
-    remote function onHello(types:Hello clientData) returns string? {
-        return "You sent: " + clientData.message;
+    remote function onHello(types:Hello clientData) returns types:Response? {
+        return {message:"You sent: " + clientData.message};
     }
 
 }
@@ -36,11 +36,11 @@ service class WsService {
 service class WsServiceUser {
     *websocket:Service;
     
-    remote function onSubscribe(websocket:Caller caller, types:Subscribe sub) returns string? {
+    remote function onSubscribe(websocket:Caller caller, types:Subscribe sub) returns types:Response? {
         types:User user = {caller: caller, gender: sub.gender, name: sub.name, id: caller.getConnectionId()};
         users[caller.getConnectionId()] = user;
         broadcast("User " + user.name + " (" + caller.getConnectionId() + ")" + " has joined the chat");
-        return users.toArray().toBalString();
+        return {message:users.toArray().toBalString()};
     } 
 
     remote function onUnsubscribe(websocket:Caller caller, types:Unsubscribe unsubscribe) returns error? {
@@ -53,20 +53,20 @@ service class WsServiceUser {
     //     _ = users.remove(caller.getConnectionId());
     // }
 
-    remote function onChat(websocket:Caller caller, types:Chat message) returns string|error {
+    remote function onChat(websocket:Caller caller, types:Chat message) returns types:Response|error {
         if (!users.hasKey(caller.getConnectionId())) {
-            return "Please subscribe first to send messages";
+            return { message: "Please subscribe first to send messages"};
         }
         types:User sender = users.get(caller.getConnectionId());
         if (!users.hasKey(message.toUserId)) {
-            return "User not found";
+            return {message:"User not found"};
         }
         websocket:Caller? receiver = users.get(message.toUserId).caller;
         if (receiver is ()) {
-            return "User not found";
+            return {message:"User not found"};
         }
         _ = check receiver->writeTextMessage(sender.name + ": " + message.message);
-        return "You: " + message.message;
+        return {message:"You: " + message.message};
     }
   
 }
@@ -77,6 +77,7 @@ function broadcast(string message) {
         if (caller is ()) {
             return;
         }
-        websocket:Error? err = caller->writeTextMessage(message);
+        types:Response response = {message: message};
+        websocket:Error? err = caller->writeMessage(response);
     });
 }

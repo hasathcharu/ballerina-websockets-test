@@ -15,6 +15,15 @@
 // under the License.
 import ballerina/websocket;
 
+# Representation of a response
+# 
+# + event - dispatcher key
+# + message - message to be sent
+public type Response record {|
+    string event = "just a message";
+    string message;
+|};
+
 # Representation of an unsubscribe message.
 #
 # + event - dispatcher key
