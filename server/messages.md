@@ -19,5 +19,5 @@
 ## Chat Message Example
 
 ```json
-{"event":"chat","message":"Mellow", "toUserId": "cc6b1efffe42ea75-000207b7-00000001-8652f1058d6f8446-e099f225"}
+{"event":"chat","message":"Mellow", "toUserId": "cc6b1efffe42ea75-000c2995-00000002-ca41e708c6b8adc9-a63e3394"}
 ```

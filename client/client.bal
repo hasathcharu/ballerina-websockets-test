@@ -5,15 +5,11 @@ import xlibb/pipe;
 import ballerina/io;
 
 public client isolated class UserClient {
-    private final websocket:Client clientEp;
+    public final websocket:Client clientEp;
     private final pipe:Pipe writeMessageQueue;
     private final pipe:Pipe readMessageQueue;
     private final PipesMap pipes;
-    private boolean isMessageWriting;
-    private boolean isMessageReading;
-    private boolean isPipeTriggering;
-    private pipe:Pipe? subscribePipe;
-    private pipe:Pipe? chatPipe;
+    private boolean isActive;
 
     # Gets invoked to initialize the `connector`.
     #
@@ -26,65 +22,72 @@ public client isolated class UserClient {
         self.readMessageQueue = new (1000);
         websocket:Client websocketEp = check new (serviceUrl, clientConfig);
         self.clientEp = websocketEp;
-        self.subscribePipe = ();
-        self.chatPipe = ();
-        self.isMessageWriting = true;
-        self.isMessageReading = true;
-        self.isPipeTriggering = true;
+        self.isActive = true;
         self.startMessageWriting();
         self.startMessageReading();
         self.startPipeTriggering();
         return;
     }
 
-    # Use to write messages to the websocket.
-    #
     private isolated function startMessageWriting() {
-        worker writeMessage returns error? {
+        worker writeMessage {
             while true {
                 lock {
-                    if !self.isMessageWriting {
+                    if !self.isActive {
                         break;
                     }
                 }
-                anydata requestMessage = check self.writeMessageQueue.consume(5);
-                check self.clientEp->writeMessage(requestMessage);
+                Message|pipe:Error requestMessage = self.writeMessageQueue.consume(5);
+                if requestMessage is pipe:Error {
+                    if (requestMessage.message() == "Operation has timed out") {
+                        continue;
+                    }
+                    io:println("PipeError: " + requestMessage.message());
+                    self.attemptToCloseConnection();
+                    return;
+                }
+                websocket:Error? err =  self.clientEp->writeMessage(requestMessage);
+                if err is websocket:Error {
+                    io:println("WsError: " + err.message());
+                    self.attemptToCloseConnection();
+                    return;
+                }
                 runtime:sleep(0.01);
             }
         }
         
     }
 
-    # Use to read messages from the websocket.
-    #
     private isolated function startMessageReading() {
-        worker readMessage returns error? {
+        worker readMessage {
             while true {
                 lock {
-                    if !self.isMessageReading {
+                    if !self.isActive {
                         break;
                     }
                 }
-                io:println("Reading message");
-                string|error message = self.clientEp->readMessage();
+                Message|error message = self.clientEp->readMessage();
                 if message is error {
                     io:println("WsError: " + message.message());
+                    self.attemptToCloseConnection();
                     return;
                 }
-                io:println("MessageR: " + message.toBalString());
-                check self.readMessageQueue.produce(message, 5);
+                pipe:Error? err = self.readMessageQueue.produce(message, 5);
+                if err is pipe:Error {
+                    io:println("PipeError: " + err.message());
+                    self.attemptToCloseConnection();
+                    return;
+                }
                 runtime:sleep(0.01);
             }
         }
     }
 
-    # Use to map received message responses into relevant requests.
-    #
     private isolated function startPipeTriggering() {
-        worker pipeTrigger returns error? {
+        worker pipeTrigger {
             while true {
                 lock {
-                    if !self.isPipeTriggering {
+                    if !self.isActive {
                         break;
                     }
                 }
@@ -93,99 +96,112 @@ public client isolated class UserClient {
                     if (message.message() == "Operation has timed out") {
                         continue;
                     }
-                    io:println("Pipe error" + message.message());
-                    return error ("Pipe triggering stopped");
+                    io:println("PipeError: " + message.message());
+                    self.attemptToCloseConnection();
+                    return;
                 }
-                string event = message.event;
-                io:println("Event: " + event);
-                match (event) {
-                    "Response" => {
-                        pipe:Pipe subscribePipe = self.pipes.getPipe("subscribe");
-                        check subscribePipe.produce(message, 5);
-                    }
-                    "Response" => {
-                        pipe:Pipe chatPipe = self.pipes.getPipe("chat");
-                        check chatPipe.produce(message, 5);
-                    }
+                pipe:Pipe pipe = self.pipes.getPipe(message.event);
+                pipe:Error? err = pipe.produce(message, 5);
+                if (err is pipe:Error) {
+                    io:println("PipeError: " + err.message());
+                    self.attemptToCloseConnection();
+                    return;
                 }
             }
-            return error ("Pipe triggering stopped");
         }
     }
 
-    #
     remote isolated function doSubscribe(Subscribe subscribe, decimal timeout) returns Response|error {
-        if self.writeMessageQueue.isClosed() {
-            return error("connection closed");
-        }
-        pipe:Pipe subscribePipe;
         lock {
-            self.subscribePipe = self.pipes.getPipe("subscribe");
+            if !self.isActive {
+                return error("ConnectionError: Connection has been closed");
+            }
         }
-        Message message = check subscribe.cloneWithType();
-        check self.writeMessageQueue.produce(message, timeout);
-        lock {
-            subscribePipe = check self.subscribePipe.ensureType();
+        Message|error message = subscribe.cloneWithType();
+        if message is error {
+            self.attemptToCloseConnection();
+            return error ("DataBindingError: Error in cloning message");
         }
-        anydata responseMessage = check subscribePipe.consume(timeout);
-        Response response = check responseMessage.cloneWithType();
+        pipe:Error? err =  self.writeMessageQueue.produce(message, timeout);
+        if err is pipe:Error {
+            self.attemptToCloseConnection();
+            return error ("PipeError: Error in producing message");
+        }
+        Message|pipe:Error responseMessage;
+        responseMessage = self.pipes.getPipe("subscribe").consume(timeout);
+        if responseMessage is pipe:Error {
+            self.attemptToCloseConnection();
+            return error ("PipeError: Error in consuming message");
+        }
+        Response|error response = responseMessage.cloneWithType();
+        if response is error {
+            self.attemptToCloseConnection();
+            return error ("DataBindingError: Error in cloning message");
+        }
         return response;
     }
 
-    #
     remote isolated function doUnsubscribe(Unsubscribe unsubscribe, decimal timeout) returns error? {
-        if self.writeMessageQueue.isClosed() {
-            return error("connection closed");
+        lock {
+            if !self.isActive {
+                return error("ConnectionError: Connection has been closed");
+            }
         }
-        Message message = check unsubscribe.cloneWithType();
-        check self.writeMessageQueue.produce(message, timeout);
+        Message|error message = unsubscribe.cloneWithType();
+        if message is error {
+             self.attemptToCloseConnection();
+            return error ("DataBindingError: Error in cloning message");
+        }
+        pipe:Error? err = self.writeMessageQueue.produce(message, timeout);
+        if err is pipe:Error {
+             self.attemptToCloseConnection();
+            return error ("PipeError: Error in producing message");
+        }
     }
 
-    #
     remote isolated function doChat(Chat chat, decimal timeout) returns Response|error {
-        if self.writeMessageQueue.isClosed() {
-            return error("connection closed");
-        }
-        pipe:Pipe chatPipe;
         lock {
-            self.chatPipe = self.pipes.getPipe("chat");
+            if !self.isActive {
+                return error("ConnectionError: Connection has been closed");
+            }
         }
-        Message message = check chat.cloneWithType();
-        check self.writeMessageQueue.produce(message, timeout);
-        lock {
-            chatPipe = check self.chatPipe.ensureType();
+        Message|error message = chat.cloneWithType();
+        if message is error {
+            self.attemptToCloseConnection();
+            return error ("DataBindingError: Error in cloning message");
         }
-        anydata responseMessage = check chatPipe.consume(timeout);
-        Response response = check responseMessage.cloneWithType();
+        pipe:Error? err =  self.writeMessageQueue.produce(message, timeout);
+        if err is pipe:Error {
+            self.attemptToCloseConnection();
+            return error ("PipeError: Error in producing message");
+        }
+        Message|pipe:Error responseMessage;
+        responseMessage = self.pipes.getPipe("chat").consume(timeout);
+        if responseMessage is pipe:Error {
+            self.attemptToCloseConnection();
+            return error ("PipeError: Error in consuming message");
+        }
+        Response|error response = responseMessage.cloneWithType();
+        if response is error {
+            self.attemptToCloseConnection();
+            return error ("DataBindingError: Error in cloning message");
+        }
         return response;
     }
 
-    remote isolated function closeSubscribePipe() returns error? {
-        lock {
-            if self.subscribePipe !is() {
-                pipe:Pipe subscribePipe = check self.subscribePipe.ensureType();
-                check subscribePipe.gracefulClose();
-            }
+    isolated function attemptToCloseConnection() {
+        error? connectionClose = self->connectionClose();
+        if connectionClose is error {
+            string errorMessage = "ConnectionError: " + connectionClose.message();
+            io:println(errorMessage);
         }
-    };
-
-    remote isolated function closeChatPipe() returns error? {
-        lock {
-            if self.chatPipe !is() {
-                pipe:Pipe chatPipe = check self.chatPipe.ensureType();
-                check chatPipe.gracefulClose();
-            }
-        }
-    };
+    }
 
     remote isolated function connectionClose() returns error? {
         lock {
-            self.isMessageReading = false;
-            self.isMessageWriting = false;
-            self.isPipeTriggering = false;
+            self.isActive = false;
             check self.writeMessageQueue.immediateClose();
             check self.readMessageQueue.immediateClose();
-            check self.pipes.removePipes();
             check self.clientEp->close();
         }
     };

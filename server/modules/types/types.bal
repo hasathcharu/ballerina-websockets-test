@@ -43,8 +43,6 @@ public type Info record {|
 # + event - type of event
 # + name - name of the user
 # + gender - gender of the user
-# + id - id of the user (connection id)
-# + caller - websocket caller object
 public type Subscribe record {|
     string event;
     string name;
@@ -53,7 +51,6 @@ public type Subscribe record {|
 
 # Representation of a user.
 #
-# + event - type of event
 # + name - name of the user
 # + gender - gender of the user
 # + id - id of the user (connection id)

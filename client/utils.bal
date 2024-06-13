@@ -19,7 +19,7 @@ public isolated class PipesMap {
             if (self.pipes.hasKey(id)) {
                 return self.pipes.get(id);
             }
-            pipe:Pipe pipe = new (1);
+            pipe:Pipe pipe = new (1000);
             self.addPipe(id, pipe);
             return pipe;
         }
