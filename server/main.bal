@@ -41,12 +41,12 @@ service class WsServiceUser {
         io:println("Subscribe: " + caller.getConnectionId());
         types:User user = {caller: caller, gender: sub.gender, name: sub.name, id: caller.getConnectionId()};
         users[caller.getConnectionId()] = user;
-        broadcast("User " + user.name + " (" + caller.getConnectionId() + ")" + " has joined the chat");
-        return {message: "Welcome to the chat!", event:"subscribe"};
+        broadcast("System: User " + user.name + " (" + caller.getConnectionId() + ")" + " has joined the chat");
+        return {message: "System: Welcome to the chat!", event:"chat"};
     } 
 
     remote function onUnsubscribe(websocket:Caller caller, types:Unsubscribe unsubscribe) returns error? {
-        broadcast("User " + users.get(caller.getConnectionId()).name + " has left the chat");
+        broadcast("System: User " + users.get(caller.getConnectionId()).name + " has left the chat");
         _ = users.remove(caller.getConnectionId());
         check caller->close(0);
     }
