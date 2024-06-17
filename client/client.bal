@@ -7,7 +7,6 @@ import ballerina/io;
 public client isolated class UserClient {
     private final websocket:Client clientEp;
     private final pipe:Pipe writeMessageQueue;
-    private final pipe:Pipe readMessageQueue;
     private final PipesMap pipes;
     private final StreamGeneratorsMap streamGenerators;
     private boolean isActive;
@@ -21,13 +20,11 @@ public client isolated class UserClient {
         self.pipes = new ();
         self.streamGenerators = new ();
         self.writeMessageQueue = new (1000);
-        self.readMessageQueue = new (1000);
         websocket:Client websocketEp = check new (serviceUrl, clientConfig);
         self.clientEp = websocketEp;
         self.isActive = true;
         self.startMessageWriting();
         self.startMessageReading();
-        self.startPipeTriggering();
         return;
     }
 
@@ -74,41 +71,14 @@ public client isolated class UserClient {
                     self.attemptToCloseConnection();
                     return;
                 }
-                pipe:Error? err = self.readMessageQueue.produce(message, 5);
-                if err is pipe:Error {
+                pipe:Pipe pipe = self.pipes.getPipe(message.event);
+                pipe:Error? err = pipe.produce(message, 5);
+                if (err is pipe:Error) {
                     io:println("[readMessage]PipeError: " + err.message());
                     self.attemptToCloseConnection();
                     return;
                 }
                 runtime:sleep(0.01);
-            }
-        }
-    }
-
-    private isolated function startPipeTriggering() {
-        worker pipeTrigger {
-            while true {
-                lock {
-                    if !self.isActive {
-                        break;
-                    }
-                }
-                Message|pipe:Error message = self.readMessageQueue.consume(5);
-                if message is pipe:Error {
-                    if (message.message() == "Operation has timed out") {
-                        continue;
-                    }
-                    io:println("PTPipeError: " + message.message());
-                    self.attemptToCloseConnection();
-                    return;
-                }
-                pipe:Pipe pipe = self.pipes.getPipe(message.event);
-                pipe:Error? err = pipe.produce(message, 5);
-                if (err is pipe:Error) {
-                    io:println("PTPipeError: " + err.message());
-                    self.attemptToCloseConnection();
-                    return;
-                }
             }
         }
     }
@@ -198,7 +168,6 @@ public client isolated class UserClient {
         lock {
             self.isActive = false;
             check self.writeMessageQueue.immediateClose();
-            check self.readMessageQueue.immediateClose();
             check self.clientEp->close();
         }
     };
