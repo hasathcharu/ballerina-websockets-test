@@ -1,5 +1,5 @@
 import websocket_test.types;
-import ballerina/lang.runtime;
+// import ballerina/lang.runtime;
 
 public isolated service class ChatStream {
     private final UserChat userChat;
@@ -8,20 +8,17 @@ public isolated service class ChatStream {
         self.userChat = userChat;
     }
 
-    public isolated function next() returns record {|types:Response value;|}? {
-        lock {
-            types:Chat? chat;
-            while true {
-                chat = self.userChat.getChat();
-                if chat is () {
-                    runtime:sleep(1);
-                    continue;
-                }
-                return {value:{event: "chat", message: chat.message}};
+    public isolated function next() returns record {|types:Response value;|}|error {
+        types:Chat? chat;
+        while true {
+            chat = self.userChat.getChat();
+            if chat is () {
+                // runtime:sleep(1);
+                continue;
             }
+            return {value:{event: "chat", message: chat.message}};
         }
     }
-
 }
 
 public isolated service class UserChat {
