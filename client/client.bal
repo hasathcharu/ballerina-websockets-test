@@ -2,7 +2,7 @@ import ballerina/lang.runtime;
 import ballerina/websocket;
 
 import xlibb/pipe;
-import ballerina/io;
+import ballerina/log;
 
 public client isolated class UserClient {
     private final websocket:Client clientEp;
@@ -41,13 +41,13 @@ public client isolated class UserClient {
                     if (requestMessage.message() == "Operation has timed out") {
                         continue;
                     }
-                    io:println("[writeMessage]PipeError: " + requestMessage.message());
+                    log:printError("[writeMessage]PipeError: " + requestMessage.message());
                     self.attemptToCloseConnection();
                     return;
                 }
                 websocket:Error? err =  self.clientEp->writeMessage(requestMessage);
                 if err is websocket:Error {
-                    io:println("[writeMessage]WsError: " + err.message());
+                    log:printError("[writeMessage]WsError: " + err.message());
                     self.attemptToCloseConnection();
                     return;
                 }
@@ -67,14 +67,14 @@ public client isolated class UserClient {
                 }
                 Message|error message = self.clientEp->readMessage();
                 if message is error {
-                    io:println("[readMessage]WsError: " + message.message());
+                    log:printError("[readMessage]WsError: " + message.message());
                     self.attemptToCloseConnection();
                     return;
                 }
                 pipe:Pipe pipe = self.pipes.getPipe(message.event);
                 pipe:Error? err = pipe.produce(message, 5);
                 if (err is pipe:Error) {
-                    io:println("[readMessage]PipeError: " + err.message());
+                    log:printError("[readMessage]PipeError: " + err.message());
                     self.attemptToCloseConnection();
                     return;
                 }
@@ -160,7 +160,7 @@ public client isolated class UserClient {
         error? connectionClose = self->connectionClose();
         if connectionClose is error {
             string errorMessage = "ConnectionError: " + connectionClose.message();
-            io:println(errorMessage);
+            log:printError(errorMessage);
         }
     }
 
