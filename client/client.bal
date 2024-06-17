@@ -36,16 +36,16 @@ public client isolated class UserClient {
                         break;
                     }
                 }
-                Message|pipe:Error requestMessage = self.writeMessageQueue.consume(5);
-                if requestMessage is pipe:Error {
-                    if (requestMessage.message() == "Operation has timed out") {
+                Message|pipe:Error message = self.writeMessageQueue.consume(5);
+                if message is pipe:Error {
+                    if (message.message() == "Operation has timed out") {
                         continue;
                     }
-                    log:printError("[writeMessage]PipeError: " + requestMessage.message());
+                    log:printError("[writeMessage]PipeError: " + message.message());
                     self.attemptToCloseConnection();
                     return;
                 }
-                websocket:Error? err =  self.clientEp->writeMessage(requestMessage);
+                websocket:Error? err =  self.clientEp->writeMessage(message);
                 if err is websocket:Error {
                     log:printError("[writeMessage]WsError: " + err.message());
                     self.attemptToCloseConnection();
