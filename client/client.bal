@@ -94,8 +94,8 @@ public client isolated class UserClient {
             self.attemptToCloseConnection();
             return error("[doSubscribe]DataBindingError: Error in cloning message");
         }
-        pipe:Error? err = self.writeMessageQueue.produce(message, timeout);
-        if err is pipe:Error {
+        pipe:Error? pipeErr = self.writeMessageQueue.produce(message, timeout);
+        if pipeErr is pipe:Error {
             self.attemptToCloseConnection();
             return error("[doSubscribe]PipeError: Error in producing message");
         }
@@ -116,12 +116,12 @@ public client isolated class UserClient {
         }
         Message|error message = unsubscribe.cloneWithType();
         if message is error {
-             self.attemptToCloseConnection();
+            self.attemptToCloseConnection();
             return error("[doUnsubscribe]DataBindingError: Error in cloning message");
         }
-        pipe:Error? err = self.writeMessageQueue.produce(message, timeout);
-        if err is pipe:Error {
-             self.attemptToCloseConnection();
+        pipe:Error? pipeErr = self.writeMessageQueue.produce(message, timeout);
+        if pipeErr is pipe:Error {
+            self.attemptToCloseConnection();
             return error("[doUnsubscribe]PipeError: Error in producing message");
         }
     }
@@ -137,8 +137,8 @@ public client isolated class UserClient {
             self.attemptToCloseConnection();
             return error("[doChat]DataBindingError: Error in cloning message");
         }
-        pipe:Error? err =  self.writeMessageQueue.produce(message, timeout);
-        if err is pipe:Error {
+        pipe:Error? pipeErr =  self.writeMessageQueue.produce(message, timeout);
+        if pipeErr is pipe:Error {
             self.attemptToCloseConnection();
             return error("[doChat]PipeError: Error in producing message");
         }
