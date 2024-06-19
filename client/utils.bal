@@ -45,7 +45,7 @@ public client isolated class ResponseStreamGenerator {
     #
     # + pipe - Pipe to hold stream messages 
     # + timeout - Waiting time 
-    public isolated function init(pipe:Pipe pipe, decimal timeout) returns error? {
+    public isolated function init(pipe:Pipe pipe, decimal timeout) {
         self.pipe = pipe;
         self.timeout = timeout;
     }
