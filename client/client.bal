@@ -38,7 +38,7 @@ public client isolated class UserClient {
                 }
                 Message|pipe:Error message = self.writeMessageQueue.consume(5);
                 if message is pipe:Error {
-                    if (message.message() == "Operation has timed out") {
+                    if message.message() == "Operation has timed out" {
                         continue;
                     }
                     log:printError("[writeMessage]PipeError: " + message.message());
@@ -166,6 +166,8 @@ public client isolated class UserClient {
         lock {
             self.isActive = false;
             check self.writeMessageQueue.immediateClose();
+            check self.pipes.removePipes();
+            check self.streamGenerators.removeStreamGenerators();
             check self.clientEp->close();
         }
     };
