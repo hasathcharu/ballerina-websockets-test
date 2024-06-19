@@ -1,8 +1,8 @@
 import ballerina/lang.runtime;
+import ballerina/log;
 import ballerina/websocket;
 
 import xlibb/pipe;
-import ballerina/log;
 
 public client isolated class UserClient {
     private final websocket:Client clientEp;
@@ -38,7 +38,7 @@ public client isolated class UserClient {
                 }
                 Message|pipe:Error message = self.writeMessageQueue.consume(5);
                 if message is pipe:Error {
-                    if (message.message() == "Operation has timed out") {
+                    if message.message() == "Operation has timed out" {
                         continue;
                     }
                     log:printError("[writeMessage]PipeError: " + message.message());
