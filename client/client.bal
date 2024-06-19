@@ -137,7 +137,7 @@ public client isolated class UserClient {
             self.attemptToCloseConnection();
             return error("[doChat]DataBindingError: Error in cloning message");
         }
-        pipe:Error? pipeErr =  self.writeMessageQueue.produce(message, timeout);
+        pipe:Error? pipeErr = self.writeMessageQueue.produce(message, timeout);
         if pipeErr is pipe:Error {
             self.attemptToCloseConnection();
             return error("[doChat]PipeError: Error in producing message");
