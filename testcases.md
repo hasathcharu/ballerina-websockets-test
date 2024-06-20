@@ -6,7 +6,6 @@
 [ ] SimpleResponseTests.testOneResponseWithNoDispatcherStreamIdRequest
 [ ] StreamResponseTests.testMultipleStreamingRequestWithNoDispatcherStreamIdRequest
 [ ] StreamResponseTests.testOneStreamingWithNoDispatcherStreamIdRequest
-[ ] SubProtocolTests.testGraphQlOverWebsocket
 
 ### Failing tests with `dispatcherStreamId`
 [ ] HeadersTests.getHeaderTests
@@ -22,3 +21,11 @@
 [ ] SimpleResponseTests.testOneResponseWithDispatcherStreamIdRequest
 [ ] StreamResponseTests.testMultipleStreamingRequestWithDispatcherStreamIdRequest
 [ ] StreamResponseTests.testOneStreamingWithDispatcherStreamIdRequest
+[ ] SubProtocolTests.testGraphQlOverWebsocket
+
+### Failing tests due to util changes
+[ ] UtilGenerationTests.testCompleteUtilFileGen
+[ ] UtilGenerationTests.testDefaultUtilFileGen
+[ ] UtilGenerationTests.testUtilFileGenForHeader
+[ ] UtilGenerationTests.testUtilFileGenForQueryParams
+[ ] UtilGenerationTests.testUtilFileGenURLEncodedRequestBody

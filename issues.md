@@ -7,3 +7,4 @@
 
 ## Identified issues in AsyncAPI client generation
 - `dispatcherKey` value for responses are assumed to be the same as the request's return type, which is not always the case
+- Unused pipes should be removed from the `pipes` map

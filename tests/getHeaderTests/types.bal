@@ -13,6 +13,10 @@ public type HeaderParams record {|
     int units = 12;
 |};
 
+public type Message readonly & record {string event;};
+
+public type MessageWithId readonly & record {string event; string id;};
+
 public type Subscribe record {
     string id;
     string event;
