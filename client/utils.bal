@@ -1,5 +1,35 @@
 import xlibb/pipe;
 
+public client isolated class ResponseStreamGenerator {
+    *Generator;
+    private final pipe:Pipe pipe;
+    private final decimal timeout;
+
+    # StreamGenerator
+    #
+    # + pipe - Pipe to hold stream messages 
+    # + timeout - Waiting time 
+    public isolated function init(pipe:Pipe pipe, decimal timeout) {
+        self.pipe = pipe;
+        self.timeout = timeout;
+    }
+
+    public isolated function next() returns record {|Response value;|}|error {
+        while true {
+            anydata|error? message = self.pipe.consume(self.timeout);
+            if message is error? {
+                continue;
+            }
+            Response response = check message.cloneWithType();
+            return {value: response};
+        }
+    }
+
+    public isolated function close() returns error? {
+        check self.pipe.gracefulClose();
+    }
+}
+
 # PipesMap class to handle generated pipes
 public isolated class PipesMap {
     private final map<pipe:Pipe> pipes;
@@ -33,36 +63,6 @@ public isolated class PipesMap {
             self.pipes.removeAll();
 
         }
-    }
-}
-
-public client isolated class ResponseStreamGenerator {
-    *Generator;
-    private final pipe:Pipe pipe;
-    private final decimal timeout;
-
-    # StreamGenerator
-    #
-    # + pipe - Pipe to hold stream messages 
-    # + timeout - Waiting time 
-    public isolated function init(pipe:Pipe pipe, decimal timeout) {
-        self.pipe = pipe;
-        self.timeout = timeout;
-    }
-
-    public isolated function next() returns record {|Response value;|}|error {
-        while true {
-            anydata|error? message = self.pipe.consume(self.timeout);
-            if message is error? {
-                continue;
-            }
-            Response response = check message.cloneWithType();
-            return {value: response};
-        }
-    }
-
-    public isolated function close() returns error? {
-        check self.pipe.gracefulClose();
     }
 }
 
