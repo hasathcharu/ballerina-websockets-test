@@ -4,7 +4,7 @@ import ballerina/websocket;
 
 import xlibb/pipe;
 
-public client isolated class UserClient {
+public client isolated class ChatClient {
     private final websocket:Client clientEp;
     private final pipe:Pipe writeMessageQueue;
     private final PipesMap pipes;
@@ -16,7 +16,7 @@ public client isolated class UserClient {
     # + config - The configurations to be used when initializing the `connector` 
     # + serviceUrl - URL of the target service 
     # + return - An error if connector initialization failed 
-    public isolated function init(websocket:ClientConfiguration clientConfig =  {}, string serviceUrl = "ws://localhost:9092/user") returns error? {
+    public isolated function init(websocket:ClientConfiguration clientConfig =  {}, string serviceUrl = "ws://localhost:9090/chat") returns error? {
         self.pipes = new ();
         self.streamGenerators = new ();
         self.writeMessageQueue = new (1000);
@@ -74,7 +74,7 @@ public client isolated class UserClient {
                     self.attemptToCloseConnection();
                     return;
                 }
-                pipe:Pipe pipe = self.pipes.getPipe(message.event);
+                pipe:Pipe pipe = self.pipes.getPipe(message.'type);
                 pipe:Error? pipeErr = pipe.produce(message, 5);
                 if pipeErr is pipe:Error {
                     log:printError("[readMessage]PipeError: " + pipeErr.message());
@@ -87,25 +87,25 @@ public client isolated class UserClient {
     }
 
     #
-    remote isolated function doSubscribe(Subscribe subscribe, decimal timeout) returns stream<Response,error?>|error {
+    remote isolated function doSubscribeMessage(SubscribeMessage subscribeMessage, decimal timeout) returns stream<NextMessage|CompleteMessage|ErrorMessage,error?>|error {
         lock {
             if !self.isActive {
-                return error("[doSubscribe]ConnectionError: Connection has been closed");
+                return error("[doSubscribeMessage]ConnectionError: Connection has been closed");
             }
         }
-        Message|error message = subscribe.cloneWithType();
+        Message|error message = subscribeMessage.cloneWithType();
         if message is error {
             self.attemptToCloseConnection();
-            return error("[doSubscribe]DataBindingError: Error in cloning message");
+            return error("[doSubscribeMessage]DataBindingError: Error in cloning message");
         }
         pipe:Error? pipeErr = self.writeMessageQueue.produce(message, timeout);
         if pipeErr is pipe:Error {
             self.attemptToCloseConnection();
-            return error("[doSubscribe]PipeError: Error in producing message");
+            return error("[doSubscribeMessage]PipeError: Error in producing message");
         }
-        stream<Response,error?> streamMessages;
+        stream<NextMessage|CompleteMessage|ErrorMessage,error?> streamMessages;
         lock {
-            ResponseStreamGenerator streamGenerator = new (self.pipes.getPipe("chat"), timeout);
+            NextMessageCompleteMessageErrorMessageStreamGenerator streamGenerator = new (self.pipes.getPipe("subscribeMessage"), timeout);
             self.streamGenerators.addStreamGenerator(streamGenerator);
             streamMessages = new (streamGenerator);
         }
@@ -113,52 +113,101 @@ public client isolated class UserClient {
     }
 
     #
-    remote isolated function doUnsubscribe(Unsubscribe unsubscribe, decimal timeout) returns error? {
+    remote isolated function doPingMessage(PingMessage pingMessage, decimal timeout) returns PongMessage|error {
         lock {
             if !self.isActive {
-                return error("[doUnsubscribe]ConnectionError: Connection has been closed");
+                return error("[doPingMessage]ConnectionError: Connection has been closed");
             }
         }
-        Message|error message = unsubscribe.cloneWithType();
+        Message|error message = pingMessage.cloneWithType();
         if message is error {
             self.attemptToCloseConnection();
-            return error("[doUnsubscribe]DataBindingError: Error in cloning message");
+            return error("[doPingMessage]DataBindingError: Error in cloning message");
         }
         pipe:Error? pipeErr = self.writeMessageQueue.produce(message, timeout);
         if pipeErr is pipe:Error {
             self.attemptToCloseConnection();
-            return error("[doUnsubscribe]PipeError: Error in producing message");
+            return error("[doPingMessage]PipeError: Error in producing message");
+        }
+        Message|pipe:Error responseMessage = self.pipes.getPipe("pingMessage").consume(timeout);
+        if responseMessage is pipe:Error {
+            self.attemptToCloseConnection();
+            return error("[doPingMessage]PipeError: Error in consuming message");
+        }
+        PongMessage|error pongMessage = responseMessage.cloneWithType();
+        if pongMessage is error {
+            self.attemptToCloseConnection();
+            return error("[doPingMessage]DataBindingError: Error in cloning message");
+        }
+        return pongMessage;
+    }
+
+    #
+    remote isolated function doPongMessage(PongMessage pongMessage, decimal timeout) returns error? {
+        lock {
+            if !self.isActive {
+                return error("[doPongMessage]ConnectionError: Connection has been closed");
+            }
+        }
+        Message|error message = pongMessage.cloneWithType();
+        if message is error {
+            self.attemptToCloseConnection();
+            return error("[doPongMessage]DataBindingError: Error in cloning message");
+        }
+        pipe:Error? pipeErr = self.writeMessageQueue.produce(message, timeout);
+        if pipeErr is pipe:Error {
+            self.attemptToCloseConnection();
+            return error("[doPongMessage]PipeError: Error in producing message");
         }
     }
 
     #
-    remote isolated function doChat(Chat chat, decimal timeout) returns Response|error {
+    remote isolated function doConnectionInitMessage(ConnectionInitMessage connectionInitMessage, decimal timeout) returns ConnectionAckMessage|error {
         lock {
             if !self.isActive {
-                return error("[doChat]ConnectionError: Connection has been closed");
+                return error("[doConnectionInitMessage]ConnectionError: Connection has been closed");
             }
         }
-        Message|error message = chat.cloneWithType();
+        Message|error message = connectionInitMessage.cloneWithType();
         if message is error {
             self.attemptToCloseConnection();
-            return error("[doChat]DataBindingError: Error in cloning message");
+            return error("[doConnectionInitMessage]DataBindingError: Error in cloning message");
         }
         pipe:Error? pipeErr = self.writeMessageQueue.produce(message, timeout);
         if pipeErr is pipe:Error {
             self.attemptToCloseConnection();
-            return error("[doChat]PipeError: Error in producing message");
+            return error("[doConnectionInitMessage]PipeError: Error in producing message");
         }
-        Message|pipe:Error responseMessage = self.pipes.getPipe("chat").consume(timeout);
+        Message|pipe:Error responseMessage = self.pipes.getPipe("connectionInitMessage").consume(timeout);
         if responseMessage is pipe:Error {
             self.attemptToCloseConnection();
-            return error("[doChat]PipeError: Error in consuming message");
+            return error("[doConnectionInitMessage]PipeError: Error in consuming message");
         }
-        Response|error response = responseMessage.cloneWithType();
-        if response is error {
+        ConnectionAckMessage|error connectionAckMessage = responseMessage.cloneWithType();
+        if connectionAckMessage is error {
             self.attemptToCloseConnection();
-            return error("[doChat]DataBindingError: Error in cloning message");
+            return error("[doConnectionInitMessage]DataBindingError: Error in cloning message");
         }
-        return response;
+        return connectionAckMessage;
+    }
+
+    #
+    remote isolated function doCompleteMessage(CompleteMessage completeMessage, decimal timeout) returns error? {
+        lock {
+            if !self.isActive {
+                return error("[doCompleteMessage]ConnectionError: Connection has been closed");
+            }
+        }
+        Message|error message = completeMessage.cloneWithType();
+        if message is error {
+            self.attemptToCloseConnection();
+            return error("[doCompleteMessage]DataBindingError: Error in cloning message");
+        }
+        pipe:Error? pipeErr = self.writeMessageQueue.produce(message, timeout);
+        if pipeErr is pipe:Error {
+            self.attemptToCloseConnection();
+            return error("[doCompleteMessage]PipeError: Error in producing message");
+        }
     }
 
     isolated function attemptToCloseConnection() {

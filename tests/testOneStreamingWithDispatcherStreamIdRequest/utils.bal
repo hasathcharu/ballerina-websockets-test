@@ -1,7 +1,7 @@
 import xlibb/pipe;
 
-# Stream generator class for Response return type
-public client isolated class ResponseStreamGenerator {
+# Stream generator class for NextMessage|CompleteMessage|ErrorMessage return type
+public client isolated class NextMessageCompleteMessageErrorMessageStreamGenerator {
     *Generator;
     private final pipe:Pipe pipe;
     private final decimal timeout;
@@ -10,22 +10,17 @@ public client isolated class ResponseStreamGenerator {
     #
     # + pipe - Pipe to hold stream messages 
     # + timeout - Waiting time 
-    public isolated function init(pipe:Pipe pipe, decimal timeout) {
+    public isolated function init(pipe:Pipe pipe, decimal timeout) returns error? {
         self.pipe = pipe;
         self.timeout = timeout;
     }
 
     #  Next method to return next stream message
     #
-    public isolated function next() returns record {|Response value;|}|error {
-        while true {
-            anydata|error? message = self.pipe.consume(self.timeout);
-            if message is error? {
-                continue;
-            }
-            Response response = check message.cloneWithType();
-            return {value: response};
-        }
+    public isolated function next() returns record {|NextMessage|CompleteMessage|ErrorMessage value;|}|error? {
+        anydata message = check self.pipe.consume(self.timeout);
+        NextMessage|CompleteMessage|ErrorMessage response = check message.cloneWithType();
+        return {value: response};
     }
 
     #  Close method to close used pipe
@@ -54,7 +49,7 @@ public isolated class PipesMap {
             if (self.pipes.hasKey(id)) {
                 return self.pipes.get(id);
             }
-            pipe:Pipe pipe = new (100);
+            pipe:Pipe pipe = new (1);
             self.addPipe(id, pipe);
             return pipe;
         }
@@ -66,6 +61,7 @@ public isolated class PipesMap {
                 check pipe.gracefulClose();
             }
             self.pipes.removeAll();
+
         }
     }
 }
@@ -95,6 +91,8 @@ public isolated class StreamGeneratorsMap {
 
 # Generator object type for type inclusion
 public type Generator isolated object {
-    public isolated function next() returns record {|anydata value;|}|error;
+
+    public isolated function next() returns record {|anydata value;|}|error?;
+
     public isolated function close() returns error?;
 };

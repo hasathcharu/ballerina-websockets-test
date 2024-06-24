@@ -1,6 +1,5 @@
 import xlibb/pipe;
 
-# Stream generator class for Response return type
 public client isolated class ResponseStreamGenerator {
     *Generator;
     private final pipe:Pipe pipe;
@@ -15,8 +14,6 @@ public client isolated class ResponseStreamGenerator {
         self.timeout = timeout;
     }
 
-    #  Next method to return next stream message
-    #
     public isolated function next() returns record {|Response value;|}|error {
         while true {
             anydata|error? message = self.pipe.consume(self.timeout);
@@ -28,8 +25,6 @@ public client isolated class ResponseStreamGenerator {
         }
     }
 
-    #  Close method to close used pipe
-    #
     public isolated function close() returns error? {
         check self.pipe.gracefulClose();
     }
@@ -54,7 +49,7 @@ public isolated class PipesMap {
             if (self.pipes.hasKey(id)) {
                 return self.pipes.get(id);
             }
-            pipe:Pipe pipe = new (100);
+            pipe:Pipe pipe = new (1000);
             self.addPipe(id, pipe);
             return pipe;
         }
@@ -66,11 +61,11 @@ public isolated class PipesMap {
                 check pipe.gracefulClose();
             }
             self.pipes.removeAll();
+
         }
     }
 }
 
-# StreamGeneratorsMap class to handle generated stream generators
 public isolated class StreamGeneratorsMap {
     private final Generator[] streamGenerators;
 
@@ -93,8 +88,9 @@ public isolated class StreamGeneratorsMap {
     }
 }
 
-# Generator object type for type inclusion
 public type Generator isolated object {
-    public isolated function next() returns record {|anydata value;|}|error;
+
+    public isolated function next() returns record {|anydata value;|}|error?;
+
     public isolated function close() returns error?;
 };

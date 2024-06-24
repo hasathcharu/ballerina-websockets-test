@@ -4,11 +4,10 @@ import ballerina/websocket;
 
 import xlibb/pipe;
 
-public client isolated class UserClient {
+public client isolated class PayloadVlocationsClient {
     private final websocket:Client clientEp;
     private final pipe:Pipe writeMessageQueue;
     private final PipesMap pipes;
-    private final StreamGeneratorsMap streamGenerators;
     private boolean isActive;
 
     # Gets invoked to initialize the `connector`.
@@ -16,11 +15,11 @@ public client isolated class UserClient {
     # + config - The configurations to be used when initializing the `connector` 
     # + serviceUrl - URL of the target service 
     # + return - An error if connector initialization failed 
-    public isolated function init(websocket:ClientConfiguration clientConfig =  {}, string serviceUrl = "ws://localhost:9092/user") returns error? {
+    public isolated function init(websocket:ClientConfiguration clientConfig =  {}, string serviceUrl = "ws://localhost:9090/payloadV") returns error? {
         self.pipes = new ();
-        self.streamGenerators = new ();
         self.writeMessageQueue = new (1000);
-        websocket:Client websocketEp = check new (serviceUrl, clientConfig);
+        string modifiedUrl = serviceUrl + string `/locations`;
+        websocket:Client websocketEp = check new (modifiedUrl, clientConfig);
         self.clientEp = websocketEp;
         self.isActive = true;
         self.startMessageWriting();
@@ -86,8 +85,12 @@ public client isolated class UserClient {
         }
     }
 
+    # remote description
     #
-    remote isolated function doSubscribe(Subscribe subscribe, decimal timeout) returns stream<Response,error?>|error {
+    # + subscribe - subscribe request description 
+    # + timeout - waiting period to keep the event in the buffer in seconds 
+    # + return - unsubscribe response description 
+    remote isolated function doSubscribe(Subscribe subscribe, decimal timeout) returns UnSubscribe|error {
         lock {
             if !self.isActive {
                 return error("[doSubscribe]ConnectionError: Connection has been closed");
@@ -103,62 +106,17 @@ public client isolated class UserClient {
             self.attemptToCloseConnection();
             return error("[doSubscribe]PipeError: Error in producing message");
         }
-        stream<Response,error?> streamMessages;
-        lock {
-            ResponseStreamGenerator streamGenerator = new (self.pipes.getPipe("chat"), timeout);
-            self.streamGenerators.addStreamGenerator(streamGenerator);
-            streamMessages = new (streamGenerator);
-        }
-        return streamMessages;
-    }
-
-    #
-    remote isolated function doUnsubscribe(Unsubscribe unsubscribe, decimal timeout) returns error? {
-        lock {
-            if !self.isActive {
-                return error("[doUnsubscribe]ConnectionError: Connection has been closed");
-            }
-        }
-        Message|error message = unsubscribe.cloneWithType();
-        if message is error {
-            self.attemptToCloseConnection();
-            return error("[doUnsubscribe]DataBindingError: Error in cloning message");
-        }
-        pipe:Error? pipeErr = self.writeMessageQueue.produce(message, timeout);
-        if pipeErr is pipe:Error {
-            self.attemptToCloseConnection();
-            return error("[doUnsubscribe]PipeError: Error in producing message");
-        }
-    }
-
-    #
-    remote isolated function doChat(Chat chat, decimal timeout) returns Response|error {
-        lock {
-            if !self.isActive {
-                return error("[doChat]ConnectionError: Connection has been closed");
-            }
-        }
-        Message|error message = chat.cloneWithType();
-        if message is error {
-            self.attemptToCloseConnection();
-            return error("[doChat]DataBindingError: Error in cloning message");
-        }
-        pipe:Error? pipeErr = self.writeMessageQueue.produce(message, timeout);
-        if pipeErr is pipe:Error {
-            self.attemptToCloseConnection();
-            return error("[doChat]PipeError: Error in producing message");
-        }
-        Message|pipe:Error responseMessage = self.pipes.getPipe("chat").consume(timeout);
+        Message|pipe:Error responseMessage = self.pipes.getPipe("subscribe").consume(timeout);
         if responseMessage is pipe:Error {
             self.attemptToCloseConnection();
-            return error("[doChat]PipeError: Error in consuming message");
+            return error("[doSubscribe]PipeError: Error in consuming message");
         }
-        Response|error response = responseMessage.cloneWithType();
-        if response is error {
+        UnSubscribe|error unSubscribe = responseMessage.cloneWithType();
+        if unSubscribe is error {
             self.attemptToCloseConnection();
-            return error("[doChat]DataBindingError: Error in cloning message");
+            return error("[doSubscribe]DataBindingError: Error in cloning message");
         }
-        return response;
+        return unSubscribe;
     }
 
     isolated function attemptToCloseConnection() {
@@ -173,7 +131,6 @@ public client isolated class UserClient {
             self.isActive = false;
             check self.writeMessageQueue.immediateClose();
             check self.pipes.removePipes();
-            check self.streamGenerators.removeStreamGenerators();
             check self.clientEp->close();
         }
     };

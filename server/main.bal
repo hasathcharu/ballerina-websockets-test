@@ -80,7 +80,7 @@ function broadcast(string message) {
         if (caller is ()) {
             return;
         }
-        types:Response response = {message: message, event: "broadcast"};
+        types:Response response = {message: message, event: "chat"};
         error? err = caller->writeMessage(response);
         if (err is error) {
             io:println("Error broadcasting message: " + err.message());

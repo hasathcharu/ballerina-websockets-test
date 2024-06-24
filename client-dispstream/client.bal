@@ -28,8 +28,6 @@ public client isolated class UserClient {
         return;
     }
 
-    # Use to write messages to the websocket.
-    #
     private isolated function startMessageWriting() {
         worker writeMessage {
             while true {
@@ -56,10 +54,9 @@ public client isolated class UserClient {
                 runtime:sleep(0.01);
             }
         }
+        
     }
 
-    # Use to read messages from the websocket.
-    #
     private isolated function startMessageReading() {
         worker readMessage {
             while true {
@@ -86,7 +83,6 @@ public client isolated class UserClient {
         }
     }
 
-    #
     remote isolated function doSubscribe(Subscribe subscribe, decimal timeout) returns stream<Response,error?>|error {
         lock {
             if !self.isActive {
@@ -112,7 +108,6 @@ public client isolated class UserClient {
         return streamMessages;
     }
 
-    #
     remote isolated function doUnsubscribe(Unsubscribe unsubscribe, decimal timeout) returns error? {
         lock {
             if !self.isActive {
@@ -131,7 +126,6 @@ public client isolated class UserClient {
         }
     }
 
-    #
     remote isolated function doChat(Chat chat, decimal timeout) returns Response|error {
         lock {
             if !self.isActive {
