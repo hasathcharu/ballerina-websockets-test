@@ -29,7 +29,7 @@ service class WsService {
     *websocket:Service;
 
     remote function onHello(types:Hello clientData) returns types:Response? {
-        return {message:"You sent: " + clientData.message};
+        return {message:"You sent: " + clientData.message, id: "null"};
     }
 
 }
@@ -39,10 +39,10 @@ service class WsServiceUser {
     
     remote function onSubscribe(websocket:Caller caller, types:Subscribe sub) returns types:Response {
         io:println("Subscribe: " + caller.getConnectionId());
-        types:User user = {caller: caller, gender: sub.gender, name: sub.name, id: caller.getConnectionId()};
+        types:User user = {caller: caller, gender: sub.gender, name: sub.name, id: caller.getConnectionId(), streamId: sub.id};
         users[caller.getConnectionId()] = user;
         broadcast("System: User " + user.name + " (" + caller.getConnectionId() + ")" + " has joined the chat");
-        return {message: "System: Welcome to the chat!", event:"chat"};
+        return {message: "System: Welcome to the chat!", event:"chat", id: sub.id};
     } 
 
     remote function onUnsubscribe(websocket:Caller caller, types:Unsubscribe unsubscribe) returns error? {
@@ -58,18 +58,19 @@ service class WsServiceUser {
 
     remote function onChat(websocket:Caller caller, types:Chat message) returns types:Response|error {
         if (!users.hasKey(caller.getConnectionId())) {
-            return { message: "Please subscribe first to send messages"};
+            return { message: "Please subscribe first to send messages", id: message.id, event:"chat"};
         }
         types:User sender = users.get(caller.getConnectionId());
         if (!users.hasKey(message.toUserId)) {
-            return {message:"User not found"};
+            return {message:"User not found", id: message.id, event:"chat"};
         }
-        websocket:Caller? receiver = users.get(message.toUserId).caller;
-        if (receiver is ()) {
-            return {message:"User not found"};
+        types:User receiver = users.get(message.toUserId);
+        websocket:Caller? receiverCaller = receiver.caller;
+        if (receiverCaller is ()) {
+            return {message:"User not found", id: message.id, event:"chat"};
         }
-        _ = check receiver->writeMessage({message: sender.name + ": " + message.message, event:"chat"});
-        return {message:"You: " + message.message, event: "chat"};
+        _ = check receiverCaller->writeMessage({message: sender.name + ": " + message.message, event:"chat", id: receiver.streamId});
+        return {message:"You: " + message.message, event: "chat", id: message.id};
     }
   
 }
@@ -80,7 +81,7 @@ function broadcast(string message) {
         if (caller is ()) {
             return;
         }
-        types:Response response = {message: message, event: "chat"};
+        types:Response response = {message: message, event: "chat", id: user.streamId};
         error? err = caller->writeMessage(response);
         if (err is error) {
             io:println("Error broadcasting message: " + err.message());

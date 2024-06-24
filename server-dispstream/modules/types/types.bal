@@ -19,16 +19,20 @@ import ballerina/websocket;
 # 
 # + event - dispatcher key
 # + message - message to be sent
+# + id - dispatcher stream id of the event
 public type Response record {|
     string event = "just a message";
     string message;
+    string id;
 |};
 
 # Representation of an unsubscribe message.
 #
 # + event - dispatcher key
+# + id - dispatcher stream id of the event
 public type Unsubscribe record {|
     string event;
+    string id;
 |};
 
 # Representation of an info message.
@@ -43,10 +47,12 @@ public type Info record {|
 # + event - type of event
 # + name - name of the user
 # + gender - gender of the user
+# + id - dispatcher stream id of the event
 public type Subscribe record {|
     string event;
     string name;
     string gender;
+    string id;
 |};
 
 # Representation of a user.
@@ -55,11 +61,13 @@ public type Subscribe record {|
 # + gender - gender of the user
 # + id - id of the user (connection id)
 # + caller - websocket caller object
+# + streamId - dispatcher stream id of the event subscription
 public type User record {|
     string name;
     string gender;
     string id;
     websocket:Caller caller;
+    string streamId;
 |};
 
 # Repersentation of a message.
@@ -67,10 +75,12 @@ public type User record {|
 # + message - message to be sent  
 # + event - dispatcher key
 # + toUserId - user id to send the message
+# + id - dispatcher stream id of the event
 public type Chat record {|
     string message;
     string event;
     string toUserId;
+    string id;
 |};
 
 public type Hello record {|

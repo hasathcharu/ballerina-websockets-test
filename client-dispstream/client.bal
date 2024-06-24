@@ -1,5 +1,6 @@
 import ballerina/lang.runtime;
 import ballerina/log;
+import ballerina/uuid;
 import ballerina/websocket;
 
 import xlibb/pipe;
@@ -28,6 +29,8 @@ public client isolated class UserClient {
         return;
     }
 
+    # Use to write messages to the websocket.
+    #
     private isolated function startMessageWriting() {
         worker writeMessage {
             while true {
@@ -54,9 +57,10 @@ public client isolated class UserClient {
                 runtime:sleep(0.01);
             }
         }
-        
     }
 
+    # Use to read messages from the websocket.
+    #
     private isolated function startMessageReading() {
         worker readMessage {
             while true {
@@ -71,7 +75,13 @@ public client isolated class UserClient {
                     self.attemptToCloseConnection();
                     return;
                 }
-                pipe:Pipe pipe = self.pipes.getPipe(message.event);
+                pipe:Pipe pipe;
+                MessageWithId|error messageWithId = message.cloneWithType(MessageWithId);
+                if messageWithId is MessageWithId {
+                    pipe = self.pipes.getPipe(messageWithId.id);
+                } else {
+                    pipe = self.pipes.getPipe(message.event);
+                }
                 pipe:Error? pipeErr = pipe.produce(message, 5);
                 if pipeErr is pipe:Error {
                     log:printError("[readMessage]PipeError: " + pipeErr.message());
@@ -83,12 +93,14 @@ public client isolated class UserClient {
         }
     }
 
+    #
     remote isolated function doSubscribe(Subscribe subscribe, decimal timeout) returns stream<Response,error?>|error {
         lock {
             if !self.isActive {
                 return error("[doSubscribe]ConnectionError: Connection has been closed");
             }
         }
+        subscribe.id = uuid:createType1AsString();
         Message|error message = subscribe.cloneWithType();
         if message is error {
             self.attemptToCloseConnection();
@@ -101,13 +113,14 @@ public client isolated class UserClient {
         }
         stream<Response,error?> streamMessages;
         lock {
-            ResponseStreamGenerator streamGenerator = new (self.pipes.getPipe("chat"), timeout);
+            ResponseStreamGenerator streamGenerator = new (self.pipes.getPipe(subscribe.id), timeout);
             self.streamGenerators.addStreamGenerator(streamGenerator);
             streamMessages = new (streamGenerator);
         }
         return streamMessages;
     }
 
+    #
     remote isolated function doUnsubscribe(Unsubscribe unsubscribe, decimal timeout) returns error? {
         lock {
             if !self.isActive {
@@ -126,12 +139,14 @@ public client isolated class UserClient {
         }
     }
 
+    #
     remote isolated function doChat(Chat chat, decimal timeout) returns Response|error {
         lock {
             if !self.isActive {
                 return error("[doChat]ConnectionError: Connection has been closed");
             }
         }
+        chat.id = uuid:createType1AsString();
         Message|error message = chat.cloneWithType();
         if message is error {
             self.attemptToCloseConnection();
@@ -142,10 +157,14 @@ public client isolated class UserClient {
             self.attemptToCloseConnection();
             return error("[doChat]PipeError: Error in producing message");
         }
-        Message|pipe:Error responseMessage = self.pipes.getPipe("chat").consume(timeout);
+        Message|pipe:Error responseMessage = self.pipes.getPipe(chat.id).consume(timeout);
         if responseMessage is pipe:Error {
             self.attemptToCloseConnection();
             return error("[doChat]PipeError: Error in consuming message");
+        }
+        pipe:Error? pipeCloseError = self.pipes.getPipe(chat.id).gracefulClose();
+        if pipeCloseError is pipe:Error {
+            log:printDebug("[doChat]PipeError: Error in closing pipe.");
         }
         Response|error response = responseMessage.cloneWithType();
         if response is error {
