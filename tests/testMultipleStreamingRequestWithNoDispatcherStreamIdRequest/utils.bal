@@ -3,30 +3,37 @@ import xlibb/pipe;
 # Stream generator class for NextMessage|CompleteMessage|ErrorMessage return type
 public client isolated class NextMessageCompleteMessageErrorMessageStreamGenerator {
     *Generator;
-    private final pipe:Pipe pipe;
+    private final PipesMap pipes;
+    private final string pipeId;
     private final decimal timeout;
 
     # StreamGenerator
     #
     # + pipe - Pipe to hold stream messages 
     # + timeout - Waiting time 
-    public isolated function init(pipe:Pipe pipe, decimal timeout) returns error? {
-        self.pipe = pipe;
+    public isolated function init(PipesMap pipes, string pipeId, decimal timeout) {
+        self.pipes = pipes;
+        self.pipeId = pipeId;
         self.timeout = timeout;
     }
 
     #  Next method to return next stream message
     #
-    public isolated function next() returns record {|NextMessage|CompleteMessage|ErrorMessage value;|}|error? {
-        anydata message = check self.pipe.consume(self.timeout);
-        NextMessage|CompleteMessage|ErrorMessage response = check message.cloneWithType();
-        return {value: response};
+    public isolated function next() returns record {|NextMessage|CompleteMessage|ErrorMessage value;|}|error {
+        while true {
+            anydata|error? message = self.pipes.getPipe(self.pipeId).consume(self.timeout);
+            if message is error? {
+                continue;
+            }
+            NextMessage|CompleteMessage|ErrorMessage response = check message.cloneWithType();
+            return {value: response};
+        }
     }
 
-    #  Close method to close used pipe
+    # Close method to close used pipe
     #
     public isolated function close() returns error? {
-        check self.pipe.gracefulClose();
+        check self.pipes.removePipe(self.pipeId);
     }
 }
 
@@ -49,9 +56,16 @@ public isolated class PipesMap {
             if (self.pipes.hasKey(id)) {
                 return self.pipes.get(id);
             }
-            pipe:Pipe pipe = new (1);
+            pipe:Pipe pipe = new (100);
             self.addPipe(id, pipe);
             return pipe;
+        }
+    }
+
+    public isolated function removePipe(string id) returns error? {
+        lock {
+            _ = check self.getPipe(id).gracefulClose();
+            _ = self.pipes.remove(id);
         }
     }
 
@@ -61,7 +75,6 @@ public isolated class PipesMap {
                 check pipe.gracefulClose();
             }
             self.pipes.removeAll();
-
         }
     }
 }
@@ -91,8 +104,6 @@ public isolated class StreamGeneratorsMap {
 
 # Generator object type for type inclusion
 public type Generator isolated object {
-
-    public isolated function next() returns record {|anydata value;|}|error?;
-
+    public isolated function next() returns record {|anydata value;|}|error;
     public isolated function close() returns error?;
 };

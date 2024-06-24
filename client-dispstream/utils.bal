@@ -30,7 +30,7 @@ public client isolated class ResponseStreamGenerator {
         }
     }
 
-    #  Close method to close used pipe
+    # Close method to close used pipe
     #
     public isolated function close() returns error? {
         check self.pipes.removePipe(self.pipeId);

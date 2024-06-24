@@ -1,3 +1,5 @@
+public type Message readonly & record {string 'type;};
+
 public type Error record {
     string 'type;
 };

@@ -1,14 +1,15 @@
 import ballerina/lang.runtime;
 import ballerina/log;
-
+import ballerina/uuid;
 import ballerina/websocket;
 
 import xlibb/pipe;
-import ballerina/uuid;
+
 public client isolated class PayloadVv1versionv2versionnameClient {
     private final websocket:Client clientEp;
     private final pipe:Pipe writeMessageQueue;
     private final PipesMap pipes;
+    private final StreamGeneratorsMap streamGenerators;
     private boolean isActive;
 
     # Gets invoked to initialize the `connector`.
@@ -19,6 +20,7 @@ public client isolated class PayloadVv1versionv2versionnameClient {
     # + pathParams - path parameters 
     public isolated function init(PathParams pathParams, websocket:ClientConfiguration clientConfig =  {}, string serviceUrl = "ws://localhost:9090/payloadV") returns error? {
         self.pipes = new ();
+        self.streamGenerators = new ();
         self.writeMessageQueue = new (1000);
         string modifiedUrl = serviceUrl + string `/v1/${getEncodedUri(pathParams.version)}/v2/${getEncodedUri(pathParams.'version\-name)}`;
         websocket:Client websocketEp = check new (modifiedUrl, clientConfig);
@@ -80,7 +82,7 @@ public client isolated class PayloadVv1versionv2versionnameClient {
                 if messageWithId is MessageWithId {
                     pipe = self.pipes.getPipe(messageWithId.id);
                 } else {
-                    pipe = self.pipes.getPipe(message.event);
+                    pipe = self.pipes.getPipe(message.'type);
                 }
                 pipe:Error? pipeErr = pipe.produce(message, 5);
                 if pipeErr is pipe:Error {
@@ -94,38 +96,30 @@ public client isolated class PayloadVv1versionv2versionnameClient {
     }
 
     #
-    remote isolated function doSubscribe(Subscribe subscribe, decimal timeout) returns UnSubscribe|error {
+    remote isolated function doSubscribeMessage(SubscribeMessage subscribeMessage, decimal timeout) returns stream<NextMessage|CompleteMessage|ErrorMessage,error?>|error {
         lock {
             if !self.isActive {
-                return error("[doSubscribe]ConnectionError: Connection has been closed");
+                return error("[doSubscribeMessage]ConnectionError: Connection has been closed");
             }
         }
-        subscribe.id = uuid:createType1AsString();
-        Message|error message = subscribe.cloneWithType();
+        subscribeMessage.id = uuid:createType1AsString();
+        Message|error message = subscribeMessage.cloneWithType();
         if message is error {
             self.attemptToCloseConnection();
-            return error("[doSubscribe]DataBindingError: Error in cloning message");
+            return error("[doSubscribeMessage]DataBindingError: Error in cloning message");
         }
         pipe:Error? pipeErr = self.writeMessageQueue.produce(message, timeout);
         if pipeErr is pipe:Error {
             self.attemptToCloseConnection();
-            return error("[doSubscribe]PipeError: Error in producing message");
+            return error("[doSubscribeMessage]PipeError: Error in producing message");
         }
-        Message|pipe:Error responseMessage = self.pipes.getPipe(subscribe.id).consume(timeout);
-        if responseMessage is pipe:Error {
-            self.attemptToCloseConnection();
-            return error("[doSubscribe]PipeError: Error in consuming message");
+        stream<NextMessage|CompleteMessage|ErrorMessage,error?> streamMessages;
+        lock {
+            NextMessageCompleteMessageErrorMessageStreamGenerator streamGenerator = new (self.pipes, subscribeMessage.id, timeout);
+            self.streamGenerators.addStreamGenerator(streamGenerator);
+            streamMessages = new (streamGenerator);
         }
-        error? pipeCloseError = self.pipes.removePipe(subscribe.id);
-        if pipeCloseError is error {
-            log:printDebug("[doSubscribe]PipeError: Error in closing pipe.");
-        }
-        UnSubscribe|error unSubscribe = responseMessage.cloneWithType();
-        if unSubscribe is error {
-            self.attemptToCloseConnection();
-            return error("[doSubscribe]DataBindingError: Error in cloning message");
-        }
-        return unSubscribe;
+        return streamMessages;
     }
 
     isolated function attemptToCloseConnection() {
@@ -140,6 +134,7 @@ public client isolated class PayloadVv1versionv2versionnameClient {
             self.isActive = false;
             check self.writeMessageQueue.immediateClose();
             check self.pipes.removePipes();
+            check self.streamGenerators.removeStreamGenerators();
             check self.clientEp->close();
         }
     };

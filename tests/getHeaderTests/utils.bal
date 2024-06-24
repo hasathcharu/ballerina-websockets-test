@@ -21,9 +21,16 @@ public isolated class PipesMap {
             if (self.pipes.hasKey(id)) {
                 return self.pipes.get(id);
             }
-            pipe:Pipe pipe = new (1);
+            pipe:Pipe pipe = new (100);
             self.addPipe(id, pipe);
             return pipe;
+        }
+    }
+
+    public isolated function removePipe(string id) returns error? {
+        lock {
+            _ = check self.getPipe(id).gracefulClose();
+            _ = self.pipes.remove(id);
         }
     }
 
@@ -33,7 +40,6 @@ public isolated class PipesMap {
                 check pipe.gracefulClose();
             }
             self.pipes.removeAll();
-
         }
     }
 }
@@ -48,5 +54,4 @@ public isolated function getCombineHeaders(map<string> customHeaders, map<string
         customHeaders[k] = v;
     }
     return customHeaders;
-
 }
