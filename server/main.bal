@@ -42,7 +42,7 @@ service class WsServiceUser {
         types:User user = {caller: caller, gender: sub.gender, name: sub.name, id: caller.getConnectionId()};
         users[caller.getConnectionId()] = user;
         broadcast("System: User " + user.name + " (" + caller.getConnectionId() + ")" + " has joined the chat");
-        return {message: "System: Welcome to the chat!", event:"chat"};
+        return {message: "System: Welcome to the chat!", event:"subscribe"};
     } 
 
     remote function onUnsubscribe(websocket:Caller caller, types:Unsubscribe unsubscribe) returns error? {
@@ -68,7 +68,7 @@ service class WsServiceUser {
         if (receiver is ()) {
             return {message:"User not found"};
         }
-        _ = check receiver->writeMessage({message: sender.name + ": " + message.message, event:"chat"});
+        _ = check receiver->writeMessage({message: sender.name + ": " + message.message, event:"subscribe"});
         return {message:"You: " + message.message, event: "chat"};
     }
   
@@ -80,7 +80,7 @@ function broadcast(string message) {
         if (caller is ()) {
             return;
         }
-        types:Response response = {message: message, event: "chat"};
+        types:Response response = {message: message, event: "subscribe"};
         error? err = caller->writeMessage(response);
         if (err is error) {
             io:println("Error broadcasting message: " + err.message());
