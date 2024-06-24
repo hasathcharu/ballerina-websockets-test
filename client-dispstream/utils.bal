@@ -3,15 +3,17 @@ import xlibb/pipe;
 # Stream generator class for Response return type
 public client isolated class ResponseStreamGenerator {
     *Generator;
-    private final pipe:Pipe pipe;
+    private final PipesMap pipes;
+    private final string pipeId;
     private final decimal timeout;
 
     # StreamGenerator
     #
     # + pipe - Pipe to hold stream messages 
     # + timeout - Waiting time 
-    public isolated function init(pipe:Pipe pipe, decimal timeout) {
-        self.pipe = pipe;
+    public isolated function init(PipesMap pipes, string pipeId, decimal timeout) {
+        self.pipes = pipes;
+        self.pipeId = pipeId;
         self.timeout = timeout;
     }
 
@@ -19,7 +21,7 @@ public client isolated class ResponseStreamGenerator {
     #
     public isolated function next() returns record {|Response value;|}|error {
         while true {
-            anydata|error? message = self.pipe.consume(self.timeout);
+            anydata|error? message = self.pipes.getPipe(self.pipeId).consume(self.timeout);
             if message is error? {
                 continue;
             }
@@ -31,7 +33,7 @@ public client isolated class ResponseStreamGenerator {
     #  Close method to close used pipe
     #
     public isolated function close() returns error? {
-        check self.pipe.gracefulClose();
+        check self.pipes.removePipe(self.pipeId);
     }
 }
 
@@ -57,6 +59,13 @@ public isolated class PipesMap {
             pipe:Pipe pipe = new (100);
             self.addPipe(id, pipe);
             return pipe;
+        }
+    }
+
+    public isolated function removePipe(string id) returns error? {
+        lock {
+            _ = check self.getPipe(id).gracefulClose();
+            _ = self.pipes.remove(id);
         }
     }
 

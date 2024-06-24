@@ -113,7 +113,7 @@ public client isolated class UserClient {
         }
         stream<Response,error?> streamMessages;
         lock {
-            ResponseStreamGenerator streamGenerator = new (self.pipes.getPipe(subscribe.id), timeout);
+            ResponseStreamGenerator streamGenerator = new (self.pipes, subscribe.id, timeout);
             self.streamGenerators.addStreamGenerator(streamGenerator);
             streamMessages = new (streamGenerator);
         }
@@ -162,8 +162,8 @@ public client isolated class UserClient {
             self.attemptToCloseConnection();
             return error("[doChat]PipeError: Error in consuming message");
         }
-        pipe:Error? pipeCloseError = self.pipes.getPipe(chat.id).gracefulClose();
-        if pipeCloseError is pipe:Error {
+        error? pipeCloseError = self.pipes.removePipe(chat.id);
+        if pipeCloseError is error {
             log:printDebug("[doChat]PipeError: Error in closing pipe.");
         }
         Response|error response = responseMessage.cloneWithType();
