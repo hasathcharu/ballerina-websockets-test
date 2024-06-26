@@ -110,7 +110,6 @@ components:
         $ref: '#/components/schemas/Subscribe'
       x-response:
         $ref: '#/components/messages/Response'
-        x-required: false
       x-response-type: server-streaming
     Unsubscribe:
       payload:
