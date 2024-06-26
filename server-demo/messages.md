@@ -10,12 +10,6 @@
 {"event":"unsubscribe"}
 ```
 
-## Info Message Example
-
-```json
-{"event":"info"}
-```
-
 ## Chat Message Example
 
 ```json
