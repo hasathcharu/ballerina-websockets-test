@@ -94,7 +94,8 @@ components:
         $ref: '#/components/schemas/Subscribe'
       x-response:
         $ref: '#/components/messages/Response'
-      x-response-type: server-streaming
+        x-required: false
+      x-response-type: simple-rpc
     Unsubscribe:
       payload:
         $ref: '#/components/schemas/Unsubscribe'

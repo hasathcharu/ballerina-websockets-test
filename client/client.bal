@@ -105,7 +105,7 @@ public client isolated class UserClient {
         }
         stream<Response,error?> streamMessages;
         lock {
-            ResponseStreamGenerator streamGenerator = new (self.pipes.getPipe("subscribe"), timeout);
+            ResponseStreamGenerator streamGenerator = new (self.pipes, "subscribe", timeout);
             self.streamGenerators.addStreamGenerator(streamGenerator);
             streamMessages = new (streamGenerator);
         }

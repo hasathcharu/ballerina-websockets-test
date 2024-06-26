@@ -17,7 +17,8 @@ channels:
     description: Allows clients to get real-time data on users and chat with them.
     subscribe:
       message:
-        $ref: '#/components/messages/Response'
+        payload:
+          type: string
     publish:
       message:
         oneOf:
@@ -44,19 +45,6 @@ components:
           type: string
           description: gender of the user
       description: Representation of a subscription.
-    Response:
-      type: object
-      required:
-      - event
-      - message
-      properties:
-        event:
-          type: string
-          description: dispatcher key
-        message:
-          type: string
-          description: message to be sent
-      description: Representation of a response
     Unsubscribe:
       type: object
       required:
@@ -86,15 +74,14 @@ components:
           description: user id to send the message
       description: Repersentation of a message.
   messages:
-    Response:
-      payload:
-        $ref: '#/components/schemas/Response'
     Subscribe:
       payload:
         $ref: '#/components/schemas/Subscribe'
       x-response:
-        $ref: '#/components/messages/Response'
-      x-response-type: server-streaming
+        payload:
+          type: string
+        x-required: false
+      x-response-type: simple-rpc
     Unsubscribe:
       payload:
         $ref: '#/components/schemas/Unsubscribe'
@@ -102,6 +89,7 @@ components:
       payload:
         $ref: '#/components/schemas/Chat'
       x-response:
-        $ref: '#/components/messages/Response'
+        payload:
+          type: string
       x-response-type: simple-rpc
 x-dispatcherKey: event
