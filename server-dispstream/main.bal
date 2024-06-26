@@ -38,29 +38,33 @@ service class WsServiceUser {
     *websocket:Service;
     
     remote function onSubscribe(websocket:Caller caller, types:Subscribe sub) returns types:Response {
-        io:println("Subscribe: " + caller.getConnectionId());
-        types:User user = {caller: caller, gender: sub.gender, name: sub.name, id: caller.getConnectionId(), streamId: sub.id};
-        users[caller.getConnectionId()] = user;
-        broadcast("System: User " + user.name + " (" + caller.getConnectionId() + ")" + " has joined the chat");
+        string callerId = caller.getConnectionId();
+        io:println("Subscribe: " + callerId);
+        types:User user = {caller: caller, gender: sub.gender, name: sub.name, id: callerId, streamId: sub.id};
+        users[callerId] = user;
+        broadcast("System: User " + user.name + " (" + callerId + ")" + " has joined the chat");
         return {message: "System: Welcome to the chat!", event:"chat", id: sub.id};
     } 
 
     remote function onUnsubscribe(websocket:Caller caller, types:Unsubscribe unsubscribe) returns error? {
-        broadcast("System: User " + users.get(caller.getConnectionId()).name + " has left the chat");
-        _ = users.remove(caller.getConnectionId());
-        check caller->close(0);
+        string callerId = caller.getConnectionId();
+        broadcast("System: User " + users.get(callerId).name + " has left the chat");
+        _ = users.remove(callerId);
     }
 
     remote function onClose(websocket:Caller caller) returns websocket:Error? {
-        _ = users.remove(caller.getConnectionId());
-        _ = check caller->close(0);
+        string callerId = caller.getConnectionId();
+        if (users.hasKey(callerId)) {
+            _ = users.remove(callerId);
+        }   
     }
 
     remote function onChat(websocket:Caller caller, types:Chat message) returns types:Response|error {
-        if (!users.hasKey(caller.getConnectionId())) {
+        string callerId = caller.getConnectionId();
+        if (!users.hasKey(callerId)) {
             return { message: "Please subscribe first to send messages", id: message.id, event:"chat"};
         }
-        types:User sender = users.get(caller.getConnectionId());
+        types:User sender = users.get(callerId);
         if (!users.hasKey(message.toUserId)) {
             return {message:"User not found", id: message.id, event:"chat"};
         }
