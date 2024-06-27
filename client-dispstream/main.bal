@@ -29,5 +29,4 @@ public function main() returns error? {
     }
     io:println("RESPONSE: ", response);
     check wait subscribe;
-
 }

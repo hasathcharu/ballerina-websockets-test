@@ -39,7 +39,7 @@ service class WsServiceUser {
     
     remote function onSubscribe(websocket:Caller caller, types:Subscribe sub) returns stream<types:Response>|error {
         string callerId = caller.getConnectionId();
-        io:println("Subscribe: " + callerId);
+        io:println(sub.name + " subscribed: " + callerId);
         types:User user = {caller: caller, gender: sub.gender, name: sub.name, id: callerId};
         users[callerId] = user;
         broadcast("System: User " + user.name + " (" + callerId + ")" + " has joined the chat");

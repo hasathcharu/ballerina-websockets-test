@@ -4,7 +4,7 @@ import ballerina/lang.runtime;
 UserClient chatClient = check new ();
 
 public function main() returns error? {
-        worker subscribe returns error? {
+    worker subscribe returns error? {
         io:println("Subscribing to the chat service");
         stream<Response,error?> subscription = check chatClient->doSubscribe({"event":"subscribe","name":"Ballerina","gender":"Female"}, 10);
         while true {
@@ -29,5 +29,4 @@ public function main() returns error? {
     }
     io:println("RESPONSE: ", response);
     check wait subscribe;
-
 }
