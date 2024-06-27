@@ -10,8 +10,8 @@ public type Subscribe record {
     string name;
     # gender of the user
     string gender;
-    # dispathcharStreamId of the message
-    string id;
+    // # dispathcharStreamId of the message
+    // string id;
 };
 
 # Representation of a response

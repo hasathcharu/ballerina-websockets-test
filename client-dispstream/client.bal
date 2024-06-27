@@ -1,4 +1,3 @@
-import ballerina/lang.runtime;
 import ballerina/log;
 import ballerina/uuid;
 import ballerina/websocket;
@@ -29,8 +28,6 @@ public client isolated class UserClient {
         return;
     }
 
-    # Use to write messages to the websocket.
-    #
     private isolated function startMessageWriting() {
         worker writeMessage {
             while true {
@@ -54,13 +51,10 @@ public client isolated class UserClient {
                     self.attemptToCloseConnection();
                     return;
                 }
-                runtime:sleep(0.01);
             }
         }
     }
 
-    # Use to read messages from the websocket.
-    #
     private isolated function startMessageReading() {
         worker readMessage {
             while true {
@@ -88,20 +82,18 @@ public client isolated class UserClient {
                     self.attemptToCloseConnection();
                     return;
                 }
-                runtime:sleep(0.01);
             }
         }
     }
 
-    #
     remote isolated function doSubscribe(Subscribe subscribe, decimal timeout) returns stream<Response,error?>|error {
         lock {
             if !self.isActive {
                 return error("[doSubscribe]ConnectionError: Connection has been closed");
             }
         }
-        subscribe.id = uuid:createType1AsString();
-        Message|error message = subscribe.cloneWithType();
+        // subscribe.id = uuid:createType1AsString();
+        MessageWithId|error message = subscribe.cloneWithType();
         if message is error {
             self.attemptToCloseConnection();
             return error("[doSubscribe]DataBindingError: Error in cloning message");
@@ -113,14 +105,13 @@ public client isolated class UserClient {
         }
         stream<Response,error?> streamMessages;
         lock {
-            ResponseStreamGenerator streamGenerator = new (self.pipes, subscribe.id, timeout);
+            ResponseStreamGenerator streamGenerator = new (self.pipes, message.id, timeout);
             self.streamGenerators.addStreamGenerator(streamGenerator);
             streamMessages = new (streamGenerator);
         }
         return streamMessages;
     }
 
-    #
     remote isolated function doUnsubscribe(Unsubscribe unsubscribe, decimal timeout) returns error? {
         lock {
             if !self.isActive {
@@ -139,7 +130,6 @@ public client isolated class UserClient {
         }
     }
 
-    #
     remote isolated function doChat(Chat chat, decimal timeout) returns Response|error {
         lock {
             if !self.isActive {

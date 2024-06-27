@@ -1,4 +1,3 @@
-import ballerina/lang.runtime;
 import ballerina/log;
 import ballerina/websocket;
 
@@ -53,7 +52,6 @@ public client isolated class UserClient {
                     self.attemptToCloseConnection();
                     return;
                 }
-                runtime:sleep(0.01);
             }
         }
     }
@@ -81,12 +79,10 @@ public client isolated class UserClient {
                     self.attemptToCloseConnection();
                     return;
                 }
-                runtime:sleep(0.01);
             }
         }
     }
 
-    #
     remote isolated function doSubscribe(Subscribe subscribe, decimal timeout) returns stream<Response,error?>|error {
         lock {
             if !self.isActive {
@@ -112,7 +108,6 @@ public client isolated class UserClient {
         return streamMessages;
     }
 
-    #
     remote isolated function doUnsubscribe(Unsubscribe unsubscribe, decimal timeout) returns error? {
         lock {
             if !self.isActive {
@@ -131,7 +126,6 @@ public client isolated class UserClient {
         }
     }
 
-    #
     remote isolated function doChat(Chat chat, decimal timeout) returns Response|error {
         lock {
             if !self.isActive {
