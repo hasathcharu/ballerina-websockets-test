@@ -27,7 +27,7 @@ public client isolated class UserClient {
         return;
     }
 
-    # Use to write messages to the websocket.
+    # Used to write messages to the websocket.
     #
     private isolated function startMessageWriting() {
         worker writeMessage {
@@ -56,7 +56,7 @@ public client isolated class UserClient {
         }
     }
 
-    # Use to read messages from the websocket.
+    # Used to read messages from the websocket.
     #
     private isolated function startMessageReading() {
         worker readMessage {
