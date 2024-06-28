@@ -42,13 +42,13 @@ public client isolated class UserClient {
                     if message.message() == "Operation has timed out" {
                         continue;
                     }
-                    log:printError("PipeError", message);
+                    log:printError("PipeError: Failed to consume message from the pipe", message);
                     self.attemptToCloseConnection();
                     return;
                 }
                 websocket:Error? wsErr = self.clientEp->writeMessage(message);
                 if wsErr is websocket:Error {
-                    log:printError("WsError", wsErr);
+                    log:printError("WsError: Failed to write message to the client", wsErr);
                     self.attemptToCloseConnection();
                     return;
                 }
@@ -68,7 +68,7 @@ public client isolated class UserClient {
                 }
                 Message|websocket:Error message = self.clientEp->readMessage(Message);
                 if message is websocket:Error {
-                    log:printError("WsError", message);
+                    log:printError("WsError: Failed to read message from the client", message);
                     self.attemptToCloseConnection();
                     return;
                 }
@@ -81,7 +81,7 @@ public client isolated class UserClient {
                 }
                 pipe:Error? pipeErr = pipe.produce(message, 5);
                 if pipeErr is pipe:Error {
-                    log:printError("PipeError", pipeErr);
+                    log:printError("PipeError: Failed to produce message to the pipe", pipeErr);
                     self.attemptToCloseConnection();
                     return;
                 }
