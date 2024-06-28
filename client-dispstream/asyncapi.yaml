@@ -63,7 +63,7 @@ components:
           description: message to be sent
         id:
           type: string
-          description: dispathcharStreamId of the message
+          description: dispathcherStreamId of the message
       description: Representation of a response
     Unsubscribe:
       type: object
@@ -77,7 +77,7 @@ components:
           description: dispatcher key
         id: 
           type: string
-          description: dispathcharStreamId of the message
+          description: dispathcherStreamId of the message
       description: Representation of an unsubscribe message.
     Chat:
       type: object
@@ -99,7 +99,7 @@ components:
           description: user id to send the message
         id: 
           type: string
-          description: dispathcharStreamId of the message
+          description: dispathcherStreamId of the message
       description: Repersentation of a message.
   messages:
     Response:
