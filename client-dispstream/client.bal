@@ -1,5 +1,4 @@
 import ballerina/log;
-import ballerina/uuid;
 import ballerina/websocket;
 
 import xlibb/pipe;
@@ -92,7 +91,6 @@ public client isolated class UserClient {
                 return error("[doSubscribe]ConnectionError: Connection has been closed");
             }
         }
-        // subscribe.id = uuid:createType1AsString();
         MessageWithId|error message = subscribe.cloneWithType();
         if message is error {
             self.attemptToCloseConnection();
@@ -136,7 +134,6 @@ public client isolated class UserClient {
                 return error("[doChat]ConnectionError: Connection has been closed");
             }
         }
-        chat.id = uuid:createType1AsString();
         Message|error message = chat.cloneWithType();
         if message is error {
             self.attemptToCloseConnection();
