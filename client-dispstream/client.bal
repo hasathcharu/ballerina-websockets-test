@@ -146,7 +146,7 @@ public client isolated class UserClient {
         pipe:Error? pipeErr = self.writeMessageQueue.produce(message, timeout);
         if pipeErr is pipe:Error {
             self.attemptToCloseConnection();
-            return error("[doChat]PipeError: Error in producing message");
+            return error("PipeError: Error in producing message", pipeErr);
         }
         Message|pipe:Error responseMessage = self.pipes.getPipe(chat.id).consume(timeout);
         if responseMessage is pipe:Error {
@@ -155,7 +155,7 @@ public client isolated class UserClient {
         }
         error? pipeCloseError = self.pipes.removePipe(chat.id);
         if pipeCloseError is error {
-            log:printDebug("PipeError: Error in closing pipe.", pipeCloseError);
+            log:printDebug("[doChat]PipeError: Error in closing pipe.");
         }
         Response|error response = responseMessage.cloneWithType();
         if response is error {
@@ -168,7 +168,7 @@ public client isolated class UserClient {
     isolated function attemptToCloseConnection() {
         error? connectionClose = self->connectionClose();
         if connectionClose is error {
-            log:printError("ConnectionError",  connectionClose);
+            log:printError("ConnectionError", connectionClose);
         }
     }
 
