@@ -46,7 +46,7 @@ components:
           description: gender of the user
         id: 
           type: string
-          description: dispathcharStreamId of the message
+          description: dispathcherStreamId of the message
       description: Representation of a subscription.
     Response:
       type: object
