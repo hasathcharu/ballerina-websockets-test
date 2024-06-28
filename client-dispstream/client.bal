@@ -27,6 +27,8 @@ public client isolated class UserClient {
         return;
     }
 
+    # Used to write messages to the websocket.
+    #
     private isolated function startMessageWriting() {
         worker writeMessage {
             while true {
@@ -54,6 +56,8 @@ public client isolated class UserClient {
         }
     }
 
+    # Used to read messages from the websocket.
+    #
     private isolated function startMessageReading() {
         worker readMessage {
             while true {
@@ -91,7 +95,7 @@ public client isolated class UserClient {
                 return error("[doSubscribe]ConnectionError: Connection has been closed");
             }
         }
-        MessageWithId|error message = subscribe.cloneWithType();
+        Message|error message = subscribe.cloneWithType();
         if message is error {
             self.attemptToCloseConnection();
             return error("[doSubscribe]DataBindingError: Error in cloning message");
@@ -103,7 +107,7 @@ public client isolated class UserClient {
         }
         stream<Response,error?> streamMessages;
         lock {
-            ResponseStreamGenerator streamGenerator = new (self.pipes, message.id, timeout);
+            ResponseStreamGenerator streamGenerator = new (self.pipes, subscribe.id, timeout);
             self.streamGenerators.addStreamGenerator(streamGenerator);
             streamMessages = new (streamGenerator);
         }

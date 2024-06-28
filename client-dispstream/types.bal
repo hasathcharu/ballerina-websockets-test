@@ -10,8 +10,8 @@ public type Subscribe record {
     string name;
     # gender of the user
     string gender;
-    // # dispathcharStreamId of the message
-    // string id;
+    # dispathcherStreamId of the message
+    string id;
 };
 
 # Representation of a response
@@ -20,7 +20,7 @@ public type Response record {
     string event;
     # message to be sent
     string message;
-    # dispathcharStreamId of the message
+    # dispathcherStreamId of the message
     string id;
 };
 
@@ -28,7 +28,7 @@ public type Response record {
 public type Unsubscribe record {
     # dispatcher key
     string event;
-    # dispathcharStreamId of the message
+    # dispathcherStreamId of the message
     string id;
 };
 
@@ -40,6 +40,6 @@ public type Chat record {
     string event;
     # user id to send the message
     string toUserId;
-    # dispathcharStreamId of the message
+    # dispathcherStreamId of the message
     string id;
 };
