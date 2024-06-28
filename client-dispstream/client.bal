@@ -155,7 +155,7 @@ public client isolated class UserClient {
         }
         error? pipeCloseError = self.pipes.removePipe(chat.id);
         if pipeCloseError is error {
-            log:printDebug("[doChat]PipeError: Error in closing pipe.");
+            log:printDebug("PipeError: Error in closing pipe.", pipeCloseError);
         }
         Response|error response = responseMessage.cloneWithType();
         if response is error {
