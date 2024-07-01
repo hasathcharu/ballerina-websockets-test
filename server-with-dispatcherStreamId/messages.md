@@ -7,7 +7,7 @@
 ## Unsubscribe Message Example
 
 ```json
-{"event":"unsubscribe", id:"Hellooooo"}
+{"event":"unsubscribe", id:"UNSUB_ID"}
 ```
 
 ## Chat Message Example
