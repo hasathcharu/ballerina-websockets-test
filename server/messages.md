@@ -13,5 +13,5 @@
 ## Chat Message Example
 
 ```json
-{"event":"chat","message":"Hello ballerina", "toUserId": "cc6b1efffe42ea75-0003c7e2-00000002-aa19eabfbcf62d1d-48179b7d"}
+{"event":"chat","message":"Hello Ballerina", "toUserId": "c889f3fffecf137c-00018557-00000003-4694205f6ed43c07-1851679d"}
 ```
