@@ -17,8 +17,6 @@ public client isolated class NextMessageCompleteMessageErrorMessageStreamGenerat
         self.timeout = timeout;
     }
 
-    #  Next method to return next stream message
-    #
     public isolated function next() returns record {|NextMessage|CompleteMessage|ErrorMessage value;|}|error {
         while true {
             anydata|error? message = self.pipes.getPipe(self.pipeId).consume(self.timeout);
@@ -30,8 +28,6 @@ public client isolated class NextMessageCompleteMessageErrorMessageStreamGenerat
         }
     }
 
-    # Close method to close used pipe
-    #
     public isolated function close() returns error? {
         check self.pipes.removePipe(self.pipeId);
     }

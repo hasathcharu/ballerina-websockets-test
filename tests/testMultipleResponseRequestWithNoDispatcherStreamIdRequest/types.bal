@@ -1,3 +1,5 @@
+public type Message readonly & record {string event;};
+
 public type Subscribe record {
     string id;
     string event;

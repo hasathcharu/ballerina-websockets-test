@@ -3,10 +3,11 @@ import ballerina/websocket;
 
 import xlibb/pipe;
 
-public client isolated class PayloadVv1versionversionnameversionnameClient {
+public client isolated class PayloadVv1versionv2versionnameClient {
     private final websocket:Client clientEp;
     private final pipe:Pipe writeMessageQueue;
     private final PipesMap pipes;
+    private final StreamGeneratorsMap streamGenerators;
     private boolean isActive;
 
     # Gets invoked to initialize the `connector`.
@@ -17,8 +18,9 @@ public client isolated class PayloadVv1versionversionnameversionnameClient {
     # + pathParams - path parameters 
     public isolated function init(PathParams pathParams, websocket:ClientConfiguration clientConfig =  {}, string serviceUrl = "ws://localhost:9090/payloadV") returns error? {
         self.pipes = new ();
+        self.streamGenerators = new ();
         self.writeMessageQueue = new (1000);
-        string modifiedUrl = serviceUrl + string `/v1/${getEncodedUri(pathParams.version)}/version-name/${getEncodedUri(pathParams.'version\-name)}`;
+        string modifiedUrl = serviceUrl + string `/v1/${getEncodedUri(pathParams.version)}/v2/${getEncodedUri(pathParams.'version\-name)}`;
         websocket:Client websocketEp = check new (modifiedUrl, clientConfig);
         self.clientEp = websocketEp;
         self.isActive = true;
@@ -77,7 +79,7 @@ public client isolated class PayloadVv1versionversionnameversionnameClient {
                 if messageWithId is MessageWithId {
                     pipe = self.pipes.getPipe(messageWithId.id);
                 } else {
-                    pipe = self.pipes.getPipe(message.event);
+                    pipe = self.pipes.getPipe(message.'type);
                 }
                 pipe:Error? pipeErr = pipe.produce(message, 5);
                 if pipeErr is pipe:Error {
@@ -89,13 +91,13 @@ public client isolated class PayloadVv1versionversionnameversionnameClient {
         }
     }
 
-    remote isolated function doSubscribe(Subscribe subscribe, decimal timeout) returns UnSubscribe|error {
+    remote isolated function doSubscribeMessage(SubscribeMessage subscribeMessage, decimal timeout) returns stream<NextMessage|CompleteMessage|ErrorMessage,error?>|error {
         lock {
             if !self.isActive {
                 return error("ConnectionError: Connection has been closed");
             }
         }
-        Message|error message = subscribe.cloneWithType();
+        Message|error message = subscribeMessage.cloneWithType();
         if message is error {
             self.attemptToCloseConnection();
             return error("DataBindingError: Error in cloning message", message);
@@ -105,21 +107,13 @@ public client isolated class PayloadVv1versionversionnameversionnameClient {
             self.attemptToCloseConnection();
             return error("PipeError: Error in producing message", pipeErr);
         }
-        Message|pipe:Error responseMessage = self.pipes.getPipe(subscribe.id).consume(timeout);
-        if responseMessage is pipe:Error {
-            self.attemptToCloseConnection();
-            return error("PipeError: Error in consuming message", responseMessage);
+        stream<NextMessage|CompleteMessage|ErrorMessage,error?> streamMessages;
+        lock {
+            NextMessageCompleteMessageErrorMessageStreamGenerator streamGenerator = new (self.pipes, subscribeMessage.id, timeout);
+            self.streamGenerators.addStreamGenerator(streamGenerator);
+            streamMessages = new (streamGenerator);
         }
-        error? pipeCloseError = self.pipes.removePipe(subscribe.id);
-        if pipeCloseError is error {
-            log:printDebug("PipeError: Error in closing pipe.", pipeCloseError);
-        }
-        UnSubscribe|error unSubscribe = responseMessage.cloneWithType();
-        if unSubscribe is error {
-            self.attemptToCloseConnection();
-            return error("DataBindingError: Error in cloning message", unSubscribe);
-        }
-        return unSubscribe;
+        return streamMessages;
     }
 
     isolated function attemptToCloseConnection() {
@@ -134,6 +128,7 @@ public client isolated class PayloadVv1versionversionnameversionnameClient {
             self.isActive = false;
             check self.writeMessageQueue.immediateClose();
             check self.pipes.removePipes();
+            check self.streamGenerators.removeStreamGenerators();
             check self.clientEp->close();
         }
     };

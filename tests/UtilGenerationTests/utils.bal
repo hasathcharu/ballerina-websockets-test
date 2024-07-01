@@ -1,37 +1,6 @@
+import ballerina/url;
+
 import xlibb/pipe;
-
-# Stream generator class for NextMessage return type
-public client isolated class NextMessageStreamGenerator {
-    *Generator;
-    private final PipesMap pipes;
-    private final string pipeId;
-    private final decimal timeout;
-
-    # StreamGenerator
-    #
-    # + pipe - Pipe to hold stream messages 
-    # + timeout - Waiting time 
-    public isolated function init(PipesMap pipes, string pipeId, decimal timeout) {
-        self.pipes = pipes;
-        self.pipeId = pipeId;
-        self.timeout = timeout;
-    }
-
-    public isolated function next() returns record {|NextMessage value;|}|error {
-        while true {
-            anydata|error? message = self.pipes.getPipe(self.pipeId).consume(self.timeout);
-            if message is error? {
-                continue;
-            }
-            NextMessage response = check message.cloneWithType();
-            return {value: response};
-        }
-    }
-
-    public isolated function close() returns error? {
-        check self.pipes.removePipe(self.pipeId);
-    }
-}
 
 # Stream generator class for NextMessage|CompleteMessage|ErrorMessage return type
 public client isolated class NextMessageCompleteMessageErrorMessageStreamGenerator {
@@ -136,3 +105,16 @@ public type Generator isolated object {
     public isolated function next() returns record {|anydata value;|}|error;
     public isolated function close() returns error?;
 };
+
+# Get Encoded URI for a given value.
+#
+# + value - Value to be encoded
+# + return - Encoded string
+public isolated function getEncodedUri(anydata value) returns string {
+    string|error encoded = url:encode(value.toString(), "UTF8");
+    if (encoded is string) {
+        return encoded;
+    } else {
+        return value.toString();
+    }
+}
